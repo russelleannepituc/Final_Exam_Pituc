@@ -1,0 +1,5 @@
+enterprise_service_name: nginx
+monitoring_tool: prometheus
+username: Russ
+container_image_web: nginx:latest
+container_image_mon: prom/prometheus:latest

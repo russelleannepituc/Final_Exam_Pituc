@@ -1,0 +1,56 @@
+---
+- name: Final Exam Deployment
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: 4.4 Change Motd
+      copy:
+        content: "Ansible Managed by Russ\n"
+        dest: /etc/motd
+
+    - name: Install Docker on Ubuntu
+      apt:
+        name: docker.io
+        state: present
+      when: ansible_os_family == "Debian"
+    
+    - name: Install Docker on CentOS
+      dnf:
+        name: 
+          - podman-docker
+          - curl
+        state: present
+      when: ansible_os_family == "RedHat"
+     
+    - name: Ensure Container Engine is started
+      service:
+        name: "{{ (ansible_os_family == 'RedHat') | ternary('podman', 'docker') }}"
+        state: started
+        enabled: yes
+    
+    # Stop existing services that are hogging Port 80
+    - name: Stop existing web services
+      service:
+        name: "{{ item }}"
+        state: stopped
+      loop: [ 'apache2', 'httpd', 'nginx' ]
+      ignore_errors: yes
+
+    - name: Deploy Nginx Container
+      community.docker.docker_container:
+        name: enterprise_web
+        image: nginx:latest
+        state: started
+        restart: yes  # Added to ensure it tries again
+        ports:
+          - "80:80"
+
+    - name: Deploy Monitoring Container
+      community.docker.docker_container:
+        name: monitoring_tool
+        image: prom/prometheus:latest
+        state: started
+        ports:
+          - "9090:9090"
+      when: inventory_hostname == "192.168.56.106"
